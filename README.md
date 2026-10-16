@@ -17,7 +17,8 @@ It works with every aircraft that uses the simulator's cockpit display shaders, 
 cockpits. See [Compatibility](#compatibility).
 
 > Unofficial community mod. Not affiliated with Microsoft, Asobo, NVIDIA, AMD or any aircraft developer.
-> **Beta:** the standalone version is new. Please report problems (see [Troubleshooting](#troubleshooting)).
+> **Beta:** the standalone version is new. Please report problems in this repository's [issues](../../issues) (see
+> [Troubleshooting](#troubleshooting) for what to send).
 
 ## Contents
 
@@ -40,7 +41,8 @@ cockpits. See [Compatibility](#compatibility).
 
 1. Download `dxgi.dll` from the [latest release](../../releases/latest).
 2. Copy it into the folder that contains `FlightSimulator2024.exe`:
-   - Steam: `...\steamapps\common\Microsoft Flight Simulator 2024\`
+   - Steam: `...\steamapps\common\MSFS2024\`. To find it, right-click the game in Steam, then **Manage → Browse local
+     files**.
    - Microsoft Store / Xbox app: usually `C:\XboxGames\Microsoft Flight Simulator 2024\Content\`. To find it, open the
      Xbox app, right-click the game, then **Manage → Files → Browse**.
 3. Start the sim with DLSS or FSR selected and load a flight.
@@ -159,7 +161,8 @@ to paste into bug reports. It is updated every 10 seconds while the sim runs.
 | Something you can see on fixed screens: wrong or changing colours, flicker, lines, jagged or blurry edges, trails | A **capture**: with the problem visible, press **Ctrl+Shift+F8**, keep the screens in view for a few seconds, then attach the `glass-capture-....zip` that appears next to the logs. It already contains both logs |
 
 Always mention the aircraft, your DLSS/FSR mode, Frame Generation on/off and other mods (OptiScaler, ReShade, MFG
-unlocks...).
+unlocks...). Open an [issue in this repository](../../issues) for problems with this standalone version, not in the
+ReShade add-on's repository.
 
 The **logs** are written every session: `glass-cockpit-dlss-fix.log` next to the DLL, and the previous session as
 `glass-cockpit-dlss-fix.old.log` (if the sim crashed or you restarted it, the problem is in the `.old.log`). The
