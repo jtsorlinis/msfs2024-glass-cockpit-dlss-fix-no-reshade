@@ -10,7 +10,10 @@ if (-not $installation) { throw 'Visual Studio with the C++ x64 tools is require
 $tools = Get-ChildItem -LiteralPath (Join-Path $installation 'VC\Tools\MSVC') -Directory | Sort-Object Name -Descending | Select-Object -First 1
 $compiler = Join-Path $tools.FullName 'bin\Hostx64\x64\cl.exe'
 $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10'
-$sdk = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'Include') -Directory | Sort-Object Name -Descending | Select-Object -First 1
+# The newest SDK with dxc. Only version folders: the Windows Driver Kit adds Include\wdf, which sorts after them by name.
+$sdk = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'Include') -Directory | Where-Object { $_.Name -match '^\d+(\.\d+){3}$' -and (Test-Path (Join-Path $sdkRoot "bin\$($_.Name)\x64\dxc.exe")) } |
+    Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+if (-not $sdk) { throw 'A Windows SDK with dxc is required (see BUILDING.md)' }
 $dxc = Join-Path $sdkRoot "bin\$($sdk.Name)\x64\dxc.exe"
 $rc = Join-Path $sdkRoot "bin\$($sdk.Name)\x64\rc.exe"
 $env:INCLUDE = @((Join-Path $tools.FullName 'include'), (Join-Path $sdk.FullName 'ucrt'), (Join-Path $sdk.FullName 'shared'), (Join-Path $sdk.FullName 'um'), (Join-Path $sdk.FullName 'winrt')) -join ';'
