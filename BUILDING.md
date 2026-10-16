@@ -7,7 +7,7 @@ Requirements: Visual Studio 2022 with the C++ x64 tools, and a Windows SDK newer
 6.6). The build uses the newest SDK installed.
 
 ```powershell
-git clone -b standalone https://github.com/jtsorlinis/msfs2024-glass-cockpit-dlss-fix-no-reshade
+git clone https://github.com/jtsorlinis/msfs2024-glass-cockpit-dlss-fix-no-reshade
 cd msfs2024-glass-cockpit-dlss-fix-no-reshade
 git submodule update --init --depth 1
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1
