@@ -2,7 +2,9 @@
 
 You only need this to change the fix. To use it, download the release instead (see the [README](README.md)).
 
-Requirements: Visual Studio 2022 with the C++ x64 tools, and the Windows 10/11 SDK (provides `dxc` and `rc`).
+Requirements: Visual Studio 2022 with the C++ x64 tools, and a Windows SDK newer than 10.0.19041 (provides `dxc` and
+`rc`; tested with 10.0.28000). The `dxc` in 10.0.19041 and older can't compile the shaders (no HLSL 2021 or Shader Model
+6.6). The build uses the newest SDK installed.
 
 ```powershell
 git clone -b standalone https://github.com/jtsorlinis/msfs2024-glass-cockpit-dlss-fix-no-reshade
