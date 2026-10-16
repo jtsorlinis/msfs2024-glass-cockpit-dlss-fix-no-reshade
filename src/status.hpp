@@ -1,10 +1,10 @@
-// State shared between the add-on and its ReShade status panel (status_panel.cpp).
+// State shared between the fix and its status file (status_report.cpp).
 #pragma once
 #include <cstdint>
 #include <string>
 
 namespace glass {
-// Experimental fixes (panel section of the same name).
+// Experimental fixes ([experimental] in the settings file).
 struct Experimental {
     int detail_clamp = 0, edge_fade = 0, angle_softening = 0, edge_stretch = 0; // percent / hundredths of a render pixel
     int dark_screens = 0; // dark screen fix on/off
@@ -29,13 +29,7 @@ Status status();
 void set_enabled(bool on);
 void set_tint(bool on);
 void request_capture();
-void set_jitter_positive(bool on);
-void set_line_smoothing(int percent);
-void set_extra_smoothing(bool on);
-void set_glass_strength(int percent);
-void set_experimental(const Experimental& e);
 
-// The panel only needs ReShade's Dear ImGui; if this ReShade build has no compatible ImGui, the fix still runs.
-bool init_status_panel(void* reshade_module);
-void uninit_status_panel();
+// The text of glass-cockpit-dlss-fix-status.txt: summary, checks, settings and a report for bug reports.
+std::string status_text(const Status& s);
 }

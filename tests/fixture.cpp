@@ -1,4 +1,5 @@
-// Offline test of the Glass Cockpit DLSS Fix add-on inside a fake FlightSimulator2024.exe with a real ReShade.
+// Offline test of the Glass Cockpit DLSS Fix inside a fake FlightSimulator2024.exe, which loads the fix as its dxgi.dll
+// (from its own folder, as the sim does).
 // A perspective display quad (captured cockpit VS) samples a detailed 768x768 texture at 1280x720 with per-frame
 // jitter; scene colour = gain * linear(texture) + offset. A fake _nvngx.dll "evaluate" leaves the 1920x1080 output
 // magenta, so after the hook every display pixel must come from the overlay. The result is compared with an
@@ -203,7 +204,7 @@ static std::array<uint8_t, 4> pattern(UINT x, UINT y) {
     return {0, 0, 0, 255};
 }
 
-// --hotpatch: another mod (the RTX 40 MFG unlock) redirects DLSS evaluate before ReShade loads: a two-byte jump back
+// --hotpatch: another mod (the RTX 40 MFG unlock) redirects DLSS evaluate before the fix hooks it: a two-byte jump back
 // over the export's first bytes to a jump placed just before it, which leads (through a nearby jump to absolute) to
 // that mod's handler, which calls the real work itself. The fix can't hook such a function directly.
 static NgxEvaluate fake_body = nullptr;
@@ -287,7 +288,6 @@ int main(int argc, char** argv) {
                 std::printf("upscaler: FSR answered with DLSS inside its dispatch (like OptiScaler)\n");
             }
         }
-        if (!LoadLibraryW((here / L"ReShade64.asi").c_str())) { std::printf("LoadLibrary(ReShade64.asi) failed, error %lu\n", GetLastError()); return 2; }
         const auto vs = load(here / (vr ? "fixture_vr_vs.cso" : "fixture_vs.cso"));
         const std::string kind = std::string(vr ? "_vr" : "") + (screen_t0 ? "_t0" : "");
         const auto ps = load(here / ("fixture" + kind + "_ps.cso")), reference_ps = load(here / ("reference" + kind + "_ps.cso"));
@@ -295,14 +295,14 @@ int main(int argc, char** argv) {
 
         ComPtr<IDXGIFactory6> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter; check(factory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&adapter)));
-        if (reload) { // like OptiScaler at startup: a device created and released first makes ReShade unload and reload add-ons
+        if (reload) { // like OptiScaler at startup: a device created and released before the sim's own
             ComPtr<ID3D12Device> early; check(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&early)));
             early.Reset();
             std::printf("early device created and released\n");
         }
         ComPtr<ID3D12Device> device; check(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device)));
-        const auto addon = GetModuleHandleW(L"glass-cockpit-dlss-fix.addon64");
-        require(addon != nullptr, "overlay add-on not loaded by ReShade");
+        const auto addon = GetModuleHandleW((here / L"dxgi.dll").c_str());
+        require(addon != nullptr, "the fix (dxgi.dll next to the test host) was not loaded");
         const auto set_jitter = reinterpret_cast<void (*)(bool)>(GetProcAddress(addon, "GlassFixJitterPositive"));
         const auto evaluate = reinterpret_cast<NgxEvaluate>(GetProcAddress(GetModuleHandleW(L"_nvngx.dll"), "NVSDK_NGX_D3D12_EvaluateFeature"));
         require(set_jitter && evaluate, "exports missing");

@@ -1,7 +1,7 @@
-# Builds build\glass-cockpit-dlss-fix.addon64 with the MSVC and Windows SDK tools found by vswhere.
+# Builds build\dxgi.dll (the standalone fix, installed next to FlightSimulator2024.exe) with the MSVC and Windows SDK
+# tools found by vswhere.
 #   -Test     also builds the offline test host in build\test (run scripts\test.ps1 afterwards)
-#   -ReShadeDll path to a ReShade64.dll/.asi with add-on support, copied into the test host (default: installed MSFS copy)
-param([switch]$Test, [string]$ReShadeDll = 'C:\Program Files (x86)\Steam\steamapps\common\Microsoft Flight Simulator 2024\ReShade64.dll')
+param([switch]$Test)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
@@ -18,9 +18,7 @@ $env:LIB = @((Join-Path $tools.FullName 'lib\x64'), (Join-Path $sdkRoot "Lib\$($
 $env:PATH = (Split-Path $compiler) + ';' + $env:PATH
 
 $minhook = Join-Path $root 'third_party\minhook'
-$reshadeInclude = Join-Path $root 'third_party\reshade\include'
-$imgui = Join-Path $root 'third_party\imgui'
-if (-not (Test-Path (Join-Path $reshadeInclude 'reshade.hpp'))) { throw 'Submodules missing: run "git submodule update --init"' }
+if (-not (Test-Path (Join-Path $minhook 'include\MinHook.h'))) { throw 'Submodules missing: run "git submodule update --init"' }
 $build = Join-Path $root 'build'
 New-Item -ItemType Directory -Path $build -Force | Out-Null
 Push-Location $build
@@ -49,14 +47,17 @@ try {
         $headers += "cs_$pass.h"
     }
     Set-Content -LiteralPath 'overlay_shaders.h' -Value (@('#pragma once') + ($headers | ForEach-Object { "#include `"$_`"" }))
-    # Version resource: ReShade's add-on list shows its name, author and version.
+    # Version resource (file properties in Explorer: name, author, version).
     & $rc /nologo /I (Join-Path $root 'src') /I (Join-Path $sdk.FullName 'um') /I (Join-Path $sdk.FullName 'shared') /fo version.res (Join-Path $root 'src\version.rc')
     if ($LASTEXITCODE) { throw 'Version resource failed' }
-    & $compiler /nologo /std:c++20 /EHsc /W4 /WX /MD /O2 /permissive- /LD /I $build /I $reshadeInclude /I $imgui /I (Join-Path $minhook 'include') (Join-Path $root 'src\glass_cockpit_dlss_fix.cpp') (Join-Path $root 'src\status_panel.cpp') (Join-Path $root 'src\vtable_slots.cpp') buffer.obj hook.obj trampoline.obj hde64.obj version.res /link d3d12.lib dxgi.lib version.lib user32.lib shell32.lib ole32.lib windowscodecs.lib /OUT:glass-cockpit-dlss-fix.addon64
-    if ($LASTEXITCODE) { throw 'Add-on compilation failed' }
+    # No dxgi.lib: this DLL is dxgi.dll and passes its exports through to the system's (src\dxgi_proxy.cpp, src\dxgi.def).
+    # /NOIMPLIB: an import library named dxgi.lib here would be linked into the test host instead of the SDK's.
+    Remove-Item -LiteralPath 'dxgi.lib' -ErrorAction SilentlyContinue
+    & $compiler /nologo /std:c++20 /EHsc /W4 /WX /MD /O2 /permissive- /LD /I $build /I (Join-Path $minhook 'include') (Join-Path $root 'src\glass_cockpit_dlss_fix.cpp') (Join-Path $root 'src\dxgi_proxy.cpp') (Join-Path $root 'src\status_report.cpp') (Join-Path $root 'src\vtable_slots.cpp') buffer.obj hook.obj trampoline.obj hde64.obj version.res /link /DEF:"$root\src\dxgi.def" /NOIMPLIB d3d12.lib version.lib user32.lib ole32.lib windowscodecs.lib /OUT:dxgi.dll
+    if ($LASTEXITCODE) { throw 'Compilation failed' }
 
     if ($Test) {
-        # Fake FlightSimulator2024.exe + fake _nvngx.dll + ReShade + the add-on, with stand-in display shaders.
+        # Fake FlightSimulator2024.exe + fake _nvngx.dll + the fix as its dxgi.dll, with stand-in display shaders.
         $testHost = Join-Path $build 'test'
         New-Item -ItemType Directory -Path $testHost -Force | Out-Null
         & $dxc -T vs_6_6 -HV 2021 -E main -WX -O3 -Fo (Join-Path $testHost 'fixture_vs.cso') (Join-Path $root 'tests\fixture_vs.hlsl')
@@ -98,8 +99,7 @@ try {
         if ($LASTEXITCODE) { throw 'Fake OptiScaler compilation failed' }
         & $compiler /nologo /std:c++20 /EHsc /W4 /WX /MD /O2 /permissive- /Fe:"$testHost\FlightSimulator2024.exe" (Join-Path $root 'tests\fixture.cpp') /link d3d12.lib dxgi.lib ole32.lib windowscodecs.lib
         if ($LASTEXITCODE) { throw 'Test host compilation failed' }
-        Copy-Item -LiteralPath 'glass-cockpit-dlss-fix.addon64' -Destination $testHost -Force
-        if (-not (Test-Path -LiteralPath $ReShadeDll)) { throw "ReShade not found at $ReShadeDll (pass -ReShadeDll <path to ReShade64.dll/.asi with add-on support>)" }
-        Copy-Item -LiteralPath $ReShadeDll -Destination (Join-Path $testHost 'ReShade64.asi') -Force
+        # The test host imports dxgi.dll, so Windows loads the fix from its folder at start, as the sim does.
+        Copy-Item -LiteralPath 'dxgi.dll' -Destination $testHost -Force
     }
 } finally { Pop-Location }
